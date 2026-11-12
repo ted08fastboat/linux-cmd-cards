@@ -204,6 +204,47 @@
   .wrow .d{color:var(--tx2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .wrow .n{font-family:var(--mono);font-size:11.5px;color:#ff8a7a;flex:none}
 
+  /* ---------- search sheet ---------- */
+  .sheet{position:fixed;inset:0;z-index:60;background:rgba(6,7,11,.72);backdrop-filter:blur(8px);
+    display:none;align-items:flex-start;justify-content:center;padding:12vh 16px 16px}
+  .sheet.on{display:flex;animation:fade .18s ease}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .sheet-in{width:100%;max-width:620px;background:#10141c;border:1px solid var(--line2);
+    border-radius:16px;box-shadow:0 30px 80px -20px #000;overflow:hidden}
+  .sinput{width:100%;background:none;border:0;border-bottom:1px solid var(--line);color:var(--tx);
+    font-family:var(--sans);font-size:16px;padding:16px 18px;outline:none}
+  .sinput::placeholder{color:#4b5568}
+  .slist{max-height:56vh;overflow-y:auto}
+  .sitem{padding:11px 18px;border-bottom:1px solid #171d27;cursor:pointer;transition:.12s}
+  .sitem:last-child{border-bottom:0}
+  .sitem:hover{background:#161c27}
+  .sitem .l1{display:flex;gap:10px;align-items:baseline}
+  .sitem b{font-family:var(--mono);font-size:14px;color:#ffc98b;font-weight:600;flex:none}
+  .sitem .k2{font-size:10.5px;color:var(--tx3);border:1px solid #262e3c;border-radius:5px;padding:0 5px}
+  .sitem i{font-style:normal;font-size:13.4px;color:var(--tx2);flex:1}
+  .sitem .det{display:none;margin-top:7px;font-size:12.5px;color:var(--tx2);line-height:1.8}
+  .sitem.open .det{display:block}
+  .sitem .det code{display:block;font-family:var(--mono);font-size:12px;color:#8fd9c0;
+    background:#0a0e15;border:1px solid #1c222e;border-radius:6px;padding:5px 9px;margin-top:5px;
+    white-space:pre-wrap;word-break:break-word}
+  .sitem .det .w{color:#e0a3a3;margin-top:6px;display:block}
+  .sempty{padding:26px 18px;text-align:center;color:var(--tx3);font-size:13.5px}
+
+  /* ---------- heatmap ---------- */
+  .days{display:grid;grid-template-columns:repeat(30,1fr);gap:4px;margin-bottom:8px}
+  .day{aspect-ratio:1;min-height:0;border-radius:3px;background:#151a24;border:1px solid #1b212c}
+  .day.l1{background:#1e3a5f;border-color:#24486f}
+  .day.l2{background:#2b5c96;border-color:#33689f}
+  .day.l3{background:#3f86d4;border-color:#4a90dc}
+  .day.l4{background:#63a9f0;border-color:#6fb3f5}
+  .day.today{outline:1px solid #4f8cff;outline-offset:1px}
+  .dlegend{display:flex;justify-content:space-between;font-size:10.5px;color:#4a5468;margin-bottom:18px}
+  .goalset{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:6px}
+  .gbtn{font-family:var(--sans);font-size:12.5px;color:var(--tx2);background:var(--s1);
+    border:1px solid var(--line);padding:6px 14px;border-radius:8px;cursor:pointer;transition:.14s}
+  .gbtn:hover{background:var(--s2)}
+  .gbtn.on{background:rgba(79,140,255,.14);border-color:rgba(79,140,255,.5);color:#9dc0ff;font-weight:600}
+
   @media(max-width:640px){
     main{padding:14px 13px 24px}
     .bar{padding:10px 13px;gap:8px}
@@ -226,7 +267,7 @@
     <div class="spacer"></div>
     <div class="pill" id="pToday">今日 <b>0</b></div>
     <div class="pill fire" id="pStreak">连续 0 天</div>
-    <button class="ibtn" id="btnStats" title="统计（S）">▤</button>
+    <button class="ibtn" id="btnSearch" title="速查（/）"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
   </header>
   <main>
     <div class="toolbar">
@@ -244,6 +285,13 @@
   <footer id="foot">
     <kbd class="k">空格</kbd> 翻面 / 下一个　<kbd class="k">1</kbd> 不认识　<kbd class="k">2</kbd> 模糊　<kbd class="k">3</kbd> 认识　<kbd class="k">R</kbd> 朗读
   </footer>
+</div>
+
+<div class="sheet" id="sheet">
+  <div class="sheet-in">
+    <input class="sinput" id="sinput" placeholder="搜命令或中文，例如 lv / 挂载 / 防火墙" autocomplete="off" spellcheck="false">
+    <div class="slist" id="slist"></div>
+  </div>
 </div>
 
 <script>
@@ -599,6 +647,13 @@ function renderStats(){
       <div class="stat"><b style="color:var(--amb)">${dueN}</b><span>待复习</span></div>
       <div class="stat"><b style="color:var(--vio)">${S.streak||0}</b><span>连续天数</span></div>
     </div>
+    <div class="sectitle">最近 30 天</div>
+    ${(()=>{ const cells=[]; for(let i=29;i>=0;i--){ const d=new Date(Date.now()-i*DAY);
+        const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        const rec=S.days[k]; const n=rec?(rec.n+rec.r):0;
+        const lv = n===0?0 : n<5?1 : n<12?2 : n<25?3 : 4;
+        cells.push(`<div class="day ${lv?'l'+lv:''} ${i===0?'today':''}" title="${k} · ${n} 张"></div>`);
+      } return `<div class="days">${cells.join('')}</div><div class="dlegend"><span>30 天前</span><span>今天</span></div>`; })()}
     <div class="sectitle">分类进度（学过的命令 / 该类总数）</div>
     ${cats.map(c=>`<div class="catrow">
       <div class="h"><span>${c.k}</span><b>${c.got}/${c.all} · ${c.pct}%</b></div>
@@ -613,9 +668,13 @@ function renderStats(){
              <button class="btn primary" data-act="drill">练这 ${wl.length} 个错题</button></div>`;
     })()}
     <div class="sectitle">今日</div>
-    <p style="font-size:13.5px;color:var(--tx2);margin-bottom:20px">
+    <p style="font-size:13.5px;color:var(--tx2);margin-bottom:14px">
       新词 ${dc.n} 张（目标 ${S.goalNew}）· 复习 ${dc.r} 张 · 学习中 ${learning} 个
     </p>
+    <div class="goalset">
+      ${[15,20,30].map(g=>`<button class="gbtn ${S.goalNew===g?'on':''}" data-goal="${g}">每天 ${g} 张</button>`).join('')}
+    </div>
+    <p style="font-size:12px;color:var(--tx3);margin-bottom:6px">改目标从明天生效；今天想多学就点「再来 10 张」。</p>
     <div class="acts" style="justify-content:flex-start">
       <button class="btn" data-act="back">回到学习</button>
       <button class="btn" data-act="reset">重置全部进度</button>
@@ -783,6 +842,26 @@ function wrongList(){
     .sort((a,b)=> (S.w[b.c].no||0)-(S.w[a.c].no||0));
 }
 
+/* ---------- 速查 ---------- */
+function openSearch(){
+  $('#sheet').classList.add('on');
+  const q = $('#sinput'); q.value = ''; renderSearch('');
+  setTimeout(()=>q.focus(), 30);
+}
+function closeSearch(){ $('#sheet').classList.remove('on'); }
+function renderSearch(q){
+  q = q.trim().toLowerCase();
+  const list = q
+    ? WORDS.filter(w => w.c.toLowerCase().includes(q) || w.d.includes(q) || w.k.includes(q) || w.s.toLowerCase().includes(q))
+    : WORDS;
+  const box = $('#slist');
+  if(!list.length){ box.innerHTML = `<div class="sempty">没找到「${esc(q)}」，试试 lv / mount / 权限</div>`; return; }
+  box.innerHTML = list.slice(0,40).map(w=>`<div class="sitem" data-c="${esc(w.c)}">
+    <div class="l1"><b>${esc(w.c)}</b><span class="k2">${esc(w.k)}</span><i>${esc(w.d)}</i></div>
+    <div class="det">语法<code>${esc(w.s)}</code>例子<code>${esc(w.e)}</code>${w.n?`<span class="w">⚠ ${esc(w.n)}</span>`:''}</div>
+  </div>`).join('');
+}
+
 /* ================= 头部 / 模式 ================= */
 function updateHeader(){
   const dc = dayRec();
@@ -813,9 +892,18 @@ function setMode(m){
   document.querySelectorAll('#seg button').forEach(b=>{
     b.addEventListener('click', ()=>{ poolOverride = null; setMode(b.dataset.mode); });
   });
-  $('#btnStats').addEventListener('click', ()=>setMode(mode==='stats'?'study':'stats'));
+  $('#btnSearch').addEventListener('click', openSearch);
+  $('#sinput').addEventListener('input', e=>renderSearch(e.target.value));
+  $('#sheet').addEventListener('click', e=>{
+    if(e.target.id === 'sheet'){ closeSearch(); return; }
+    const it = e.target.closest('.sitem');
+    if(it) it.classList.toggle('open');
+  });
 
   document.addEventListener('click', e=>{
+    const g = e.target.closest('[data-goal]');
+    if(g){ S.goalNew = +g.dataset.goal; save(); renderStats(); return; }
+
     const b = e.target.closest('[data-act]'); if(!b) return;
     const a = b.dataset.act;
     if(a==='again'){ S.goalNew += 10; save(); renderStudy(); }
@@ -837,6 +925,9 @@ function setMode(m){
   });
 
   document.addEventListener('keydown', e=>{
+    if(e.key==='Escape'){ closeSearch(); return; }
+    if($('#sheet').classList.contains('on')) return;
+    if(e.key==='/' && mode!=='type'){ e.preventDefault(); openSearch(); return; }
     if(e.target.tagName==='SELECT') return;
     if(mode==='quiz'){
       if(/^[1-4]$/.test(e.key)){
