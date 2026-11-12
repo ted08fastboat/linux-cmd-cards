@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>命令卡 · 像背单词一样背 Linux 命令</title>
+<meta name="description" content="Linux 命令记忆卡片：翻卡学习、三档评价、到点复习、听读音，113 个 RHCSA 常用命令。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2714%27 fill=%27%234f8cff%27/%3E%3Ctext x=%2732%27 y=%2742%27 font-family=%27monospace%27 font-size=%2726%27 font-weight=%27bold%27 fill=%27white%27 text-anchor=%27middle%27%3E%24_%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#08090e; --bg2:#0c0e15;
+    --s1:#12141d; --s2:#171a25; --s3:#1d2130;
+    --line:#232838; --line2:#2e3448;
+    --tx:#eef1f7; --tx2:#a9b3c6; --tx3:#6c7690;
+    --blu:#4f8cff; --cyn:#38d3d3; --vio:#a97bff;
+    --red:#f0503c; --amb:#e8a317; --grn:#35c46a;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--tx);font-family:var(--sans);line-height:1.7;
+    min-height:100vh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  .bg{position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(700px 420px at 15% -8%, rgba(79,140,255,.16), transparent 65%),
+      radial-gradient(620px 380px at 88% 4%, rgba(169,123,255,.10), transparent 62%),
+      radial-gradient(800px 500px at 50% 110%, rgba(56,211,211,.06), transparent 60%)}
+  .wrap{position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh}
+
+  /* ---------- top bar ---------- */
+  .bar{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:1px solid rgba(35,40,56,.7);
+    backdrop-filter:blur(12px);background:rgba(8,9,14,.55)}
+  .brand{display:flex;align-items:center;gap:10px;flex:none}
+  .logo{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;
+    background:linear-gradient(150deg,#4f8cff,#8b5cf6);color:#fff;font-family:var(--mono);
+    font-size:13px;font-weight:700;box-shadow:0 4px 16px rgba(79,140,255,.32)}
+  .brand b{font-size:14px;font-weight:700;display:block;line-height:1.25;letter-spacing:-.2px}
+  .brand em{font-style:normal;font-size:10.5px;color:var(--tx3);letter-spacing:.06em}
+  .spacer{flex:1}
+  .pill{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--tx2);
+    background:var(--s1);border:1px solid var(--line);padding:5px 11px;border-radius:999px;white-space:nowrap}
+  .pill b{color:var(--tx);font-family:var(--mono);font-size:13px}
+  .pill.fire{border-color:rgba(232,163,23,.32);background:rgba(232,163,23,.08);color:#f0c56a}
+  .ibtn{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;cursor:pointer;
+    background:var(--s1);border:1px solid var(--line);color:var(--tx2);font-size:15px;transition:.15s;flex:none}
+  .ibtn:hover{background:var(--s3);color:var(--tx)}
+
+  /* ---------- main ---------- */
+  main{flex:1;width:100%;max-width:820px;margin:0 auto;padding:20px 20px 40px;
+    display:flex;flex-direction:column;justify-content:center}
+  .toolbar{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+  .seg{display:flex;background:var(--s1);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+  .seg button{font-family:var(--sans);font-size:12.5px;color:var(--tx3);background:none;border:0;
+    padding:5px 13px;border-radius:7px;cursor:pointer;transition:.15s;white-space:nowrap}
+  .seg button:hover{color:var(--tx2)}
+  .seg button.on{background:var(--s3);color:var(--tx);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  select{font-family:var(--sans);font-size:12.5px;color:var(--tx2);background:var(--s1);
+    border:1px solid var(--line);padding:6px 10px;border-radius:9px;cursor:pointer;outline:none}
+  select:focus{border-color:var(--line2)}
+
+  /* session progress */
+  .sprog{display:flex;align-items:center;gap:10px;margin-bottom:16px;font-size:11.5px;color:var(--tx3)}
+  .sprog .tr{flex:1;height:3px;border-radius:9px;background:#181c27;overflow:hidden}
+  .sprog .tr i{display:block;height:100%;width:0;border-radius:9px;
+    background:linear-gradient(90deg,var(--blu),var(--cyn));transition:width .4s ease}
+  .sprog b{font-family:var(--mono);color:var(--tx2);font-weight:500}
+
+  /* ---------- card ---------- */
+  .card{perspective:1600px;height:min(404px,56vh);min-height:340px;cursor:pointer;user-select:none}
+  .inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;
+    transition:transform .58s cubic-bezier(.3,.1,.2,1)}
+  .card.flip .inner{transform:rotateY(180deg)}
+  .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;
+    border-radius:22px;border:1px solid var(--line);overflow:hidden;
+    background:linear-gradient(170deg,#151926 0%,#11141d 55%,#0e1119 100%);
+    box-shadow:0 24px 60px -22px rgba(0,0,0,.85),0 0 0 1px rgba(255,255,255,.02) inset;
+    display:flex;flex-direction:column;padding:30px 32px}
+  .front{align-items:center;justify-content:center;text-align:center;padding-top:56px}
+  .front::before{content:"";position:absolute;inset:-40% 20% 45% 20%;border-radius:50%;
+    background:radial-gradient(closest-side,rgba(79,140,255,.16),transparent);pointer-events:none}
+  .back{transform:rotateY(180deg);overflow-y:auto;padding-top:54px}
+  .back::-webkit-scrollbar{width:5px}
+  .back::-webkit-scrollbar-thumb{background:#2a3145;border-radius:3px}
+
+  .chip{position:absolute;top:20px;left:24px;font-size:11px;letter-spacing:.1em;color:var(--cyn);
+    background:rgba(56,211,211,.09);border:1px solid rgba(56,211,211,.26);
+    padding:2px 9px;border-radius:6px;font-weight:600}
+  .cmd{font-family:var(--mono);font-size:clamp(30px,6vw,46px);font-weight:700;letter-spacing:-1px;
+    line-height:1.15;word-break:break-word;margin-top:-6px;
+    background:linear-gradient(180deg,#fff,#9fb4d8);-webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;margin:8px 0 4px}
+  .say{display:inline-flex;align-items:center;gap:6px;font-family:var(--sans);font-size:12px;
+    color:var(--blu);background:rgba(79,140,255,.09);border:1px solid rgba(79,140,255,.28);
+    padding:5px 12px;border-radius:999px;cursor:pointer;margin-top:18px;transition:.15s}
+  .say:hover{background:rgba(79,140,255,.18)}
+  .say.playing{color:var(--cyn);border-color:rgba(56,211,211,.4)}
+  .hintline{position:absolute;bottom:20px;left:0;right:0;text-align:center;font-size:11.5px;color:#525d75}
+
+  .desc{font-size:24px;font-weight:700;letter-spacing:-.4px;margin:6px 0 18px;line-height:1.45}
+  .row{display:flex;gap:12px;margin-bottom:12px;align-items:flex-start}
+  .row .lb{font-size:10.5px;color:var(--tx3);letter-spacing:.12em;flex:none;width:30px;padding-top:8px}
+  .row code{flex:1;font-family:var(--mono);font-size:13px;color:#ffd28a;background:#0b0e15;
+    border:1px solid #1e2432;border-radius:8px;padding:8px 11px;word-break:break-word;
+    white-space:pre-wrap;line-height:1.65}
+  .row.ex code{color:#8fd9c0}
+  .note{font-size:12.5px;color:#e0a3a3;background:rgba(240,80,60,.07);border:1px solid rgba(240,80,60,.2);
+    border-radius:8px;padding:8px 12px;margin-top:2px;line-height:1.7}
+  .bwrap{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;overflow-y:auto}
+  .bmeta{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:11.5px;
+    color:var(--tx3);padding-top:11px;margin-top:10px;border-top:1px solid #1c2231;letter-spacing:.02em}
+  #boxTx{font-family:var(--mono);color:var(--tx2)}
+  .rel{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:14px}
+  .rel em{font-style:normal;font-size:10.5px;color:var(--tx3);letter-spacing:.1em}
+  .rel span{font-family:var(--mono);font-size:11px;color:#8b96ab;background:#141925;border:1px solid #232a38;padding:2px 8px;border-radius:6px}
+
+  /* ---------- grade ---------- */
+  .grade{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px;opacity:0;
+    pointer-events:none;transform:translateY(6px);transition:.25s}
+  .grade.on{opacity:1;pointer-events:auto;transform:none}
+  .grade button{font-family:var(--sans);font-size:14px;font-weight:600;padding:13px 8px;border-radius:13px;
+    cursor:pointer;border:1px solid;background:transparent;transition:.15s;display:flex;
+    align-items:center;justify-content:center;gap:7px}
+  .grade kbd{font-family:var(--mono);font-size:10px;opacity:.55;border:1px solid currentColor;
+    border-radius:4px;padding:0 4px;line-height:1.5}
+  .g1{color:#ff8a7a;border-color:rgba(240,80,60,.35);background:rgba(240,80,60,.07)}
+  .g1:hover{background:rgba(240,80,60,.17)}
+  .g2{color:#f0c56a;border-color:rgba(232,163,23,.35);background:rgba(232,163,23,.07)}
+  .g2:hover{background:rgba(232,163,23,.17)}
+  .g3{color:#5fdc8f;border-color:rgba(53,196,106,.4);background:rgba(53,196,106,.09)}
+  .g3:hover{background:rgba(53,196,106,.2)}
+
+  /* ---------- done / empty ---------- */
+  .done{text-align:center;padding:40px 20px}
+  .done .big{font-size:52px;line-height:1;margin-bottom:18px;color:var(--grn)}
+  .done h2{font-size:22px;font-weight:700;margin-bottom:8px;letter-spacing:-.3px}
+  .done p{color:var(--tx2);font-size:14px;margin-bottom:24px}
+  .acts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .btn{font-family:var(--sans);font-size:13.5px;font-weight:600;padding:11px 20px;border-radius:11px;
+    cursor:pointer;border:1px solid var(--line2);background:var(--s2);color:var(--tx);transition:.15s}
+  .btn:hover{background:var(--s3)}
+  .btn.primary{background:linear-gradient(180deg,#4f8cff,#3b6fd8);border-color:#3b6fd8;color:#fff;
+    box-shadow:0 6px 20px -8px rgba(79,140,255,.7)}
+  .btn.primary:hover{filter:brightness(1.08)}
+
+  /* ---------- stats ---------- */
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px}
+  .stat{background:var(--s1);border:1px solid var(--line);border-radius:13px;padding:14px 15px}
+  .stat b{display:block;font-family:var(--mono);font-size:23px;font-weight:700;letter-spacing:-.5px}
+  .stat span{font-size:11.5px;color:var(--tx3)}
+  .catrow{margin-bottom:13px}
+  .catrow .h{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;color:var(--tx2)}
+  .catrow .h b{font-family:var(--mono);font-size:11.5px;color:var(--tx3);font-weight:500}
+  .catrow .b{height:6px;border-radius:9px;background:#161a24;overflow:hidden}
+  .catrow .b i{display:block;height:100%;border-radius:9px;
+    background:linear-gradient(90deg,var(--blu),var(--cyn));transition:width .5s}
+  .sectitle{font-size:12px;letter-spacing:.12em;color:var(--tx3);font-weight:700;margin:26px 0 12px;
+    display:flex;align-items:center;gap:8px}
+  .sectitle::before{content:"";width:3px;height:12px;background:var(--blu);border-radius:2px}
+
+  footer{padding:10px 22px 18px;text-align:center;font-size:11px;color:#4a5468}
+  kbd.k{font-family:var(--mono);font-size:10px;border:1px solid #2b3245;border-bottom-width:2px;
+    border-radius:4px;padding:0 4px;color:var(--tx3);margin:0 2px}
+
+  @media(max-width:640px){
+    main{padding:14px 13px 24px}
+    .bar{padding:10px 13px;gap:8px}
+    .brand em{display:none}
+    .face{padding:22px 20px}
+    .grid{grid-template-columns:1fr 1fr}
+    .card{height:min(430px,60vh)}
+    .desc{font-size:20px}
+  }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="wrap">
+  <header class="bar">
+    <div class="brand">
+      <span class="logo">$_</span>
+      <div><b>命令卡</b><em>LINUX COMMANDS</em></div>
+    </div>
+    <div class="spacer"></div>
+    <div class="pill" id="pToday">今日 <b>0</b></div>
+    <div class="pill fire" id="pStreak">连续 0 天</div>
+    <button class="ibtn" id="btnStats" title="统计（S）">▤</button>
+  </header>
+  <main>
+    <div class="toolbar">
+      <div class="seg" id="seg">
+        <button data-mode="study" class="on">学习</button>
+        <button data-mode="stats">统计</button>
+      </div>
+      <div class="spacer"></div>
+      <select id="catSel"></select>
+    </div>
+    <div id="stage"></div>
+  </main>
+  <footer>
+    <kbd class="k">空格</kbd> 翻面 / 下一个　<kbd class="k">1</kbd> 不认识　<kbd class="k">2</kbd> 模糊　<kbd class="k">3</kbd> 认识　<kbd class="k">R</kbd> 朗读
+  </footer>
+</div>
+
+<script>
+/* 词库： [命令, 分类, 释义, 语法, 例子, 易错点] */
+const RAW = [
+["ls","文件","列出目录内容","ls [选项] [路径]","ls -lh /var/log","-l 只列目录里的文件；看目录自身权限要 ls -ld"],
+["cd","文件","切换当前工作目录","cd 路径","cd /var/log","cd .. 上级；cd - 回上一个目录；cd ~ 家目录"],
+["pwd","文件","显示当前所在目录的绝对路径","pwd","pwd","迷路时的第一条命令"],
+["mkdir","文件","创建目录","mkdir [-p] 目录","mkdir -p /data/dev","不加 -p 时父目录不存在会报错"],
+["cp","文件","复制文件或目录","cp [-r] 源 目标","cp -a /etc/fstab /var/tmp/","-a 保留权限、属主和时间戳"],
+["mv","文件","移动或重命名文件","mv 源 目标","mv a.txt /tmp/b.txt","重命名就是移动到同目录下的新名字"],
+["rm","文件","删除文件或目录","rm [-rf] 目标","rm -rf /tmp/build","rf 组合最危险，敲之前先 ls 确认"],
+["touch","文件","创建空文件或更新时间戳","touch 文件","touch /root/a.txt","文件已存在时只更新时间戳，不覆盖内容"],
+["ln","文件","创建硬链接或软链接","ln [-s] 目标 链接名","ln -s /var/www/html /root/web","软链接建议写绝对路径，否则容易断链"],
+["find","文件","按条件递归查找文件","find 路径 [条件] [-exec 命令 {} \\;]","find /var -type f -size +5M","-exec 结尾的 \\; 是转义分号，不能省"],
+["stat","文件","查看文件详细元数据与时间戳","stat 文件","stat /etc/passwd","能看 inode、权限、atime/mtime/ctime"],
+["du","文件","统计目录或文件占用空间","du [-sh] 路径","du -sh /var/log","和 df 不同：du 看实际占用，df 看文件系统总量"],
+["tree","文件","树形展示目录结构","tree [-L 层数] 目录","tree -L 2 /etc","默认可能没装，dnf install tree"],
+["basename","文件","取出路径的最后一段","basename 路径","basename /etc/httpd/conf/httpd.conf","写脚本取文件名时很常用"],
+["dirname","文件","取出路径的目录部分","dirname 路径","dirname /etc/httpd/conf/httpd.conf","和 basename 正好互补"],
+["tar","文件","打包与解包归档文件","tar -czf 包 源 / -xzf 包","tar -czf /root/etc.tar.gz /etc","c 建 x 解 t 看；z=gzip j=bzip2 J=xz"],
+["gzip","文件","用 gzip 压缩单个文件","gzip 文件","gzip /var/log/big.log","会删掉原文件，想保留用 -k"],
+["bzip2","文件","用 bzip2 压缩单个文件","bzip2 文件","bzip2 -k big.txt","压缩率比 gzip 高但更慢；tar 里对应 -j"],
+
+["cat","文本","查看文件内容或拼接输出","cat 文件","cat /etc/hostname","适合短文件，长文件用 less"],
+["less","文本","分页浏览大文件","less 文件","less /var/log/messages","空格翻页、/搜索、q 退出"],
+["head","文本","查看文件开头若干行","head [-n 行数] 文件","head -20 /etc/passwd","默认 10 行"],
+["tail","文本","查看文件末尾，-f 可实时跟踪","tail [-f] [-n 行数] 文件","tail -f /var/log/messages","-f 跟踪日志，Ctrl+C 停止"],
+["grep","文本","按模式搜索文本行","grep [选项] 模式 文件","grep -rn 'error' /var/log","-i 忽略大小写 -v 反向 -c 计数 -E 扩展正则"],
+["sed","文本","流编辑器，逐行做替换修改","sed [-i] 's/旧/新/g' 文件","sed -i 's/80/8888/' /etc/httpd/conf/httpd.conf","-i 是原地修改，没有 -i 只打印不保存"],
+["awk","文本","按字段处理文本并输出","awk -F: '{print $1}' 文件","awk -F: '{print $1}' /etc/passwd","-F 定分隔符，$1 是第一列，$0 是整行"],
+["cut","文本","按分隔符截取指定字段","cut -d 分隔符 -f 字段 文件","cut -d: -f1 /etc/passwd","只能按固定分隔符切，处理不定长用 awk"],
+["sort","文本","对文本行排序","sort [-n] [-r] 文件","sort -t: -k3 -n /etc/passwd","默认按字符排，数字要加 -n"],
+["uniq","文本","去除相邻重复行","uniq [-c]","sort file | uniq -c","只去相邻重复，必须先 sort"],
+["wc","文本","统计行数、词数、字节数","wc [-l] 文件","wc -l /etc/passwd","-l 行 -w 词 -c 字节"],
+["tee","文本","同时写入文件和屏幕","命令 | tee [-a] 文件","ls -l | tee /tmp/list.txt","-a 追加；常配合 sudo 写受保护文件"],
+["tr","文本","替换或删除字符","tr '旧' '新'","echo abc | tr 'a-z' 'A-Z'","只能处理字符，不能处理字符串替换"],
+["xargs","文本","把标准输入转成命令参数","命令 | xargs 目标命令","find /tmp -name '*.tmp' | xargs rm -f","文件名含空格时要用 -print0 配 -0"],
+["diff","文本","比较两个文件的差异","diff 文件1 文件2","diff /etc/fstab /tmp/fstab","编辑配置前后对比很有用"],
+["echo","文本","输出文本或变量值","echo 内容","echo $PATH","加 -e 才解析 \\n 这类转义"],
+
+["chmod","权限","修改文件权限","chmod [ugoa][+-=][rwx] 文件 / chmod 755 文件","chmod 640 /etc/test.conf","644 文件 / 755 目录最常见；大写 X 只给目录加执行位"],
+["chown","权限","修改文件属主与属组","chown 用户:组 文件","chown -R dev:dev /home/dev","-R 递归；冒号前后分别是用户和组"],
+["chgrp","权限","修改文件属组","chgrp 组 文件","chgrp dev /data/report","只改组，不动属主"],
+["umask","权限","设置新建文件的默认权限掩码","umask [值]","umask 027","文件 666-umask，目录 777-umask；永久改写在 /etc/profile"],
+["setfacl","权限","给单个用户或组追加 ACL 权限","setfacl -m u:用户:权限 文件","setfacl -m u:bob:rwx /data","d: 前缀设默认 ACL，只对目录有效"],
+["getfacl","权限","查看文件的 ACL 规则","getfacl 文件","getfacl /data","ls -l 权限末尾出现 + 号说明有 ACL"],
+["su","权限","切换用户身份","su [-] 用户","su - dev","带减号才加载目标用户完整环境"],
+["sudo","权限","以其他用户身份执行命令","sudo 命令","sudo systemctl restart httpd","验证的是自己的密码；规则在 /etc/sudoers.d/"],
+["visudo","权限","安全编辑 sudoers 并校验语法","visudo [-f 文件]","visudo -f /etc/sudoers.d/devs","直接编辑 sudoers 写错会导致所有人无法 sudo"],
+["useradd","用户","创建本地用户","useradd [-m] [-s shell] [-G 组] 用户","useradd -m -s /bin/bash -G dev tom","不加 -m 可能没有家目录"],
+["usermod","用户","修改用户属性","usermod [-aG 组] 用户","usermod -aG wheel tom","-G 不加 -a 会覆盖掉其他附加组"],
+["userdel","用户","删除用户","userdel [-r] 用户","userdel -r tom","-r 连家目录一起删"],
+["groupadd","用户","创建用户组","groupadd [-g GID] 组名","groupadd -g 5000 sysadms","groupdel 删组"],
+["gpasswd","用户","管理组成员","gpasswd -a 用户 组","gpasswd -a tom dev","-d 移出，-a 加入"],
+["passwd","用户","设置或修改密码","passwd [用户]","echo 'Abc@123' | passwd --stdin tom","--stdin 用于脚本；-l 锁定 -u 解锁"],
+["chage","用户","管理密码有效期策略","chage [-M 天] [-W 天] 用户","chage -M 90 -W 7 tom","-l 查看当前策略"],
+["id","用户","查看用户的 UID、GID 与所属组","id [用户]","id tom","验证建用户结果最直接"],
+["groups","用户","查看用户所属的所有组","groups [用户]","groups tom","只列组名，要看数字用 id"],
+
+["ps","系统","查看进程快照","ps aux / ps -ef","ps aux --sort=-%cpu | head","-aux 看资源，-ef 看父子关系"],
+["top","系统","实时监控进程与资源占用","top","top -o %CPU","按 P 排 CPU、M 排内存、k 杀进程、q 退出"],
+["kill","系统","向进程发送信号","kill [-信号] PID","kill -9 1234","默认 15 请进程退出，-9 强杀"],
+["pkill","系统","按名称或用户批量结束进程","pkill [-u 用户] 名称","pkill -9 -u dev","匹配范围要确认，误杀代价大"],
+["pgrep","系统","按名称查找进程 PID","pgrep [-u 用户] 名称","pgrep -l httpd","比 ps | grep 干净"],
+["nice","系统","以指定优先级启动程序","nice -n 值 命令","nice -n 10 tar -czf a.tgz /etc","范围 -20（最高）到 19（最低）"],
+["renice","系统","调整运行中进程的优先级","renice -n 值 -p PID","renice -n 5 -p 1234","调到负数需要 root"],
+["systemctl","系统","管理 systemd 服务与启动目标","systemctl 动作 服务","systemctl enable --now httpd","enable 管开机自启，start 管现在；两个都要"],
+["journalctl","系统","查询 systemd 日志","journalctl [-u 服务] [-p 级别]","journalctl -u sshd -n 50","-b 本次启动 -b -1 上次启动"],
+["dmesg","系统","查看内核环形缓冲区消息","dmesg [-T]","dmesg -T | tail -30","-T 显示人类可读时间；硬件问题先看它"],
+["uptime","系统","查看运行时长与平均负载","uptime","uptime","三个数字是 1/5/15 分钟平均负载"],
+["free","系统","查看内存与 swap 使用情况","free [-h]","free -h","available 才是真正可用内存"],
+["tuned-adm","系统","切换系统调优配置","tuned-adm 动作","tuned-adm profile virtual-guest","list 看全部 active 看当前"],
+["dnf","软件","安装、更新、卸载 RPM 软件包","dnf 动作 包名","dnf install -y httpd","provides */文件 可反查文件属于哪个包"],
+["rpm","软件","查询 RPM 包信息与文件归属","rpm -q / -qf / -ql","rpm -qf /etc/httpd/conf/httpd.conf","不联网只查本地，装包用 dnf"],
+["flatpak","软件","管理沙箱化的桌面应用","flatpak 动作 应用","flatpak install flathub org.gimp.GIMP","远程源 flatpak remote-add；应用 ID 是反写域名"],
+
+["lsblk","存储","树形列出所有块设备","lsblk [-f]","lsblk -f","-f 显示文件系统类型和 UUID"],
+["blkid","存储","查看设备的 UUID 与文件系统类型","blkid [设备]","blkid /dev/vgdata/lvweb","写 fstab 前用它取 UUID"],
+["parted","存储","分区（支持 GPT）","parted 设备 子命令","parted /dev/vdb mklabel gpt","mklabel 会清空整块盘的分区表"],
+["fdisk","存储","交互式分区工具","fdisk 设备","fdisk /dev/vdb","n 新建 d 删除 w 写盘 q 退出"],
+["pvcreate","存储","把分区或磁盘做成物理卷","pvcreate 设备","pvcreate /dev/vdb1","LVM 第一步：把容量入股成物理卷"],
+["vgcreate","存储","创建卷组","vgcreate 卷组名 物理卷","vgcreate vgdata /dev/vdb1","LVM 第二步：把 PV 汇成池子"],
+["lvcreate","存储","创建逻辑卷","lvcreate -L 大小 -n 名字 卷组","lvcreate -L 2G -n lvweb vgdata","LVM 第三步：从池子切一块出来"],
+["lvextend","存储","扩展逻辑卷容量","lvextend -L +大小 -r 逻辑卷","lvextend -L +1G -r /dev/vgdata/lvweb","加 -r 才会同步扩文件系统"],
+["pvs","存储","查看物理卷信息","pvs","pvs","排查 LVM 容量时三件套之一"],
+["vgs","存储","查看卷组信息","vgs","vgs","重点看 VFree 还有多少可分配"],
+["lvs","存储","查看逻辑卷信息","lvs","lvs","核对 LV 大小是否真的变了"],
+["mkfs.xfs","存储","把设备格式化为 XFS 文件系统","mkfs.xfs 设备","mkfs.xfs /dev/vgdata/lvweb","已有文件系统要加 -f 强制覆盖"],
+["mount","存储","挂载文件系统","mount [-t 类型] 设备 挂载点","mount -t nfs server:/export /mnt","-a 按 fstab 全部挂载，验证 fstab 必用"],
+["umount","存储","卸载已挂载的文件系统","umount 挂载点","umount /data","设备正被占用会报 busy，先 cd 出去"],
+["findmnt","存储","以树形查看当前挂载关系","findmnt [挂载点]","findmnt /data","比 mount 输出好读得多"],
+["df","存储","查看文件系统使用率","df [-h]","df -h /data","inode 满了也要用 df -i 查"],
+["mkswap","存储","把设备格式化为 swap 分区","mkswap 设备","mkswap /dev/vdb2","格式化完还要 swapon 才生效"],
+["swapon","存储","启用 swap 空间","swapon [-a] / swapon --show","swapon -a","-a 按 fstab 启用所有 swap"],
+
+["nmcli","网络","NetworkManager 命令行，配置网卡与连接","nmcli 对象 动作","nmcli con mod eth0 ipv4.addresses 10.0.0.5/24","RHEL 10 只有 keyfile，一律用 nmcli"],
+["ip","网络","查看和配置 IP 地址与路由","ip [a|r|link]","ip a; ip r","a 地址 r 路由；老命令 ifconfig 已弃用"],
+["ss","网络","查看套接字与监听端口","ss [-tlnp]","ss -tlnp","确认服务到底有没有在监听"],
+["ping","网络","测试网络连通性","ping [-c 次数] 目标","ping -c2 8.8.8.8","默认一直 ping，记得 -c 或 Ctrl+C"],
+["firewall-cmd","网络","管理 firewalld 防火墙规则","firewall-cmd [--permanent] 动作","firewall-cmd --permanent --add-service=http","不加 --permanent 重启即失效"],
+["ssh","网络","登录远程主机或远程执行命令","ssh 用户@主机 [命令]","ssh dev@serverb hostname","-v 可看握手过程排障"],
+["ssh-keygen","网络","生成 SSH 密钥对","ssh-keygen -t 类型","ssh-keygen -t ed25519","RHEL 10 默认禁 SHA-1，别用老式 rsa"],
+["ssh-copy-id","网络","把本机公钥分发到远程主机","ssh-copy-id 用户@主机","ssh-copy-id dev@serverb","本质是追加到对方 authorized_keys"],
+["scp","网络","通过 SSH 复制文件","scp 源 用户@主机:目标","scp /etc/fstab dev@serverb:/tmp/","-r 复制目录；小文件够用"],
+["rsync","网络","增量同步文件","rsync -av 源 目标","rsync -av /var/www/ dev@serverb:/var/www/","源末尾斜杠决定复制内容还是目录本身"],
+["curl","网络","从 URL 下载或请求数据","curl [-O|-o 文件] URL","curl -s localhost:8888","-I 只看响应头，排查 Web 服务很方便"],
+["dig","网络","查询 DNS 记录","dig 域名","dig example.com","排查域名解析问题比 nslookup 详细"],
+
+["getenforce","安全","查看当前 SELinux 模式","getenforce","getenforce","返回 Enforcing / Permissive / Disabled"],
+["setenforce","安全","临时切换 enforcing 与 permissive","setenforce 0|1","setenforce 0","只改运行时，重启恢复；永久改 /etc/selinux/config"],
+["sestatus","安全","查看 SELinux 详细状态","sestatus","sestatus","能看到策略名、当前模式和加载状态"],
+["semanage","安全","管理 SELinux 策略：端口、上下文、布尔值","semanage 对象 动作","semanage fcontext -a -t httpd_sys_content_t '/web(/.*)?'","改完 fcontext 必须 restorecon 才生效"],
+["restorecon","安全","按策略恢复文件安全上下文","restorecon [-Rv] 路径","restorecon -Rv /web","永久配上下文的关键一步"],
+["chcon","安全","临时修改文件安全上下文","chcon -t 类型 文件","chcon -t httpd_sys_content_t /web/a.html","relabel 或 restorecon 后会被覆盖"],
+["setsebool","安全","开关 SELinux 布尔值","setsebool -P 名称 on|off","setsebool -P httpd_can_network_connect on","-P 才是永久，不加重启失效"],
+["getsebool","安全","查看布尔值状态","getsebool [-a] 名称","getsebool -a | grep httpd","-a 列出全部"],
+["ausearch","安全","检索审计日志中的事件","ausearch -m 类型 -ts 时间","ausearch -m avc -ts recent","定位 SELinux 拒绝的第一手证据"],
+
+["crontab","时间","管理当前用户的 cron 定时任务","crontab [-e|-l|-r]","crontab -e","五个字段：分 时 日 月 周；用绝对路径"],
+["at","时间","安排一次性定时任务","at 时间","at now +3 min","输入命令后按 Ctrl+D 结束；需要 atd 服务"],
+["atq","时间","列出待执行的 at 任务","atq","atq","atrm 编号 可删除"],
+["timedatectl","时间","查看与设置系统时间、时区","timedatectl [set-timezone 时区]","timedatectl set-timezone Asia/Shanghai","set-ntp true 打开自动对时"],
+["chronyc","时间","查询 chrony 时间同步状态","chronyc 子命令","chronyc sources -v","出现 ^* 才表示已同步"],
+["systemd-analyze","时间","分析开机各阶段耗时","systemd-analyze [blame]","systemd-analyze blame | head","找开机慢的元凶"]
+];
+
+const WORDS = RAW.map(([c,k,d,s,e,n])=>({c,k,d,s,e,n:n||''}));
+</script>
+<script>
+/* ================= 状态 ================= */
+const KEY = 'cmdcard-v1';
+const DAY = 86400000;
+const BOX_MS = [0, 10*60*1000, 1*DAY, 3*DAY, 7*DAY, 21*DAY];
+const todayStr = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const today = () => todayStr();
+
+let S = { w:{}, days:{}, last:'', streak:0, goalNew:15, cat:'全部' };
+try { const r = JSON.parse(localStorage.getItem(KEY)||'{}'); S = Object.assign(S, r); } catch(e) {}
+const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} };
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const CATS = ['全部', ...new Set(WORDS.map(w=>w.k))];
+const COLORS = {'文件':'#4f8cff','文本':'#38d3d3','权限':'#a97bff','用户':'#ff8ab3',
+  '系统':'#f0a05a','软件':'#5ad1a0','存储':'#f0c56a','网络':'#6ba8ff','安全':'#ff7a7a','时间':'#9fb4d8'};
+function tint(el, k){
+  const c = COLORS[k] || '#4f8cff';
+  el.textContent = k;
+  el.style.color = c;
+  el.style.borderColor = c + '4d';
+  el.style.background = c + '17';
+}
+const byCmd = {};
+WORDS.forEach(w=>byCmd[w.c]=w);
+
+let queue = [], qi = 0, total = 0, flipped = false, lock = false, mode = 'study';
+
+/* ================= 会话 ================= */
+function dayRec(){ return S.days[today()] || {n:0,r:0}; }
+
+function buildQueue(){
+  const pool = WORDS.filter(w => S.cat==='全部' || w.k===S.cat);
+  const now = Date.now();
+  const due = [], fresh = [];
+  pool.forEach(w=>{
+    const st = S.w[w.c];
+    if(!st) fresh.push(w.c);
+    else if(st.d <= now) due.push({c:w.c,d:st.d});
+  });
+  due.sort((a,b)=>a.d-b.d);
+  // 新词打散，避免同分类扎堆
+  for(let i=fresh.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [fresh[i],fresh[j]]=[fresh[j],fresh[i]]; }
+  const newLeft = Math.max(0, S.goalNew - dayRec().n);
+  queue = [...fresh.slice(0,newLeft), ...due.map(x=>x.c)].slice(0, 40);
+  total = queue.length;
+  qi = 0;
+  if(!queue.length){                       // 没有待学内容时，抽 10 张最不熟的复习
+    queue = pool.map(w=>w.c).sort((a,b)=>(S.w[a]?.b??-1)-(S.w[b]?.b??-1)).slice(0,10);
+    total = queue.length;
+  }
+}
+
+/* ================= 学习页 ================= */
+function renderStudy(){
+  buildQueue();
+  const stage = $('#stage');
+  if(!queue.length){ stage.innerHTML = doneHTML('词库是空的'); return; }
+  stage.innerHTML = `
+    <div class="sprog"><b id="spTx">1 / ${total}</b><div class="tr"><i id="spBar"></i></div><span id="spLeft"></span></div>
+    <div class="card" id="card">
+      <div class="inner">
+        <div class="face front">
+          <div class="chip" id="chipF">—</div>
+          <div class="cmd" id="cmdTx">—</div>
+          <button class="say" id="sayBtn">◍ 听读音 <kbd class="k">R</kbd></button>
+          <div class="hintline">点击卡片翻面 · 或按空格</div>
+        </div>
+        <div class="face back">
+          <div class="chip" id="chipB">—</div>
+          <div class="bwrap">
+            <div class="desc" id="descTx">—</div>
+            <div class="row"><span class="lb">语法</span><code id="synTx"></code></div>
+            <div class="row ex"><span class="lb">例子</span><code id="egTx"></code></div>
+            <div class="note" id="noteTx" style="display:none"></div>
+            <div class="rel" id="relTx"></div>
+          </div>
+          <div class="bmeta"><span id="boxTx">熟练度 ○○○○○</span><span>按 1 / 2 / 3 评价</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="grade" id="grade">
+      <button class="g1" data-g="1">不认识<kbd>1</kbd></button>
+      <button class="g2" data-g="2">模糊<kbd>2</kbd></button>
+      <button class="g3" data-g="3">认识<kbd>3</kbd></button>
+    </div>`;
+  $('#card').addEventListener('click', e=>{
+    if(e.target.closest('#sayBtn')) return;
+    toggleFlip();
+  });
+  $('#sayBtn').addEventListener('click', e=>{ e.stopPropagation(); speak(); });
+  $('#grade').addEventListener('click', e=>{
+    const b = e.target.closest('[data-g]'); if(b) grade(+b.dataset.g);
+  });
+  paintCard();
+}
+
+function paintCard(){
+  const c = queue[qi];
+  if(!c){ $('#stage').innerHTML = doneHTML(); bindDone(); return; }
+  const w = byCmd[c];
+  tint($('#chipF'), w.k);
+  tint($('#chipB'), w.k);
+  $('#cmdTx').textContent = w.c;
+  $('#descTx').textContent = w.d;
+  $('#synTx').textContent = w.s;
+  $('#egTx').textContent = w.e;
+  const nt = $('#noteTx');
+  if(w.n){ nt.style.display='block'; nt.textContent = '⚠ ' + w.n; } else { nt.style.display='none'; }
+
+  const box = (S.w[c]?.b) || 0;
+  $('#boxTx').textContent = '熟练度 ' + '●'.repeat(box) + '○'.repeat(5-box);
+
+  const rel = WORDS.filter(x=>x.k===w.k && x.c!==w.c).slice(0,4).map(x=>`<span>${x.c}</span>`).join('');
+  $('#relTx').innerHTML = rel ? `<em>同类</em>${rel}` : '';
+
+  $('#spTx').textContent = Math.min(qi+1,total) + ' / ' + total;
+  $('#spBar').style.width = (qi/Math.max(total,1)*100) + '%';
+  const dc = dayRec();
+  $('#spLeft').textContent = `今日 新 ${dc.n} · 复习 ${dc.r}`;
+  $('#grade').classList.remove('on');
+  flipped = false;
+  $('#card').classList.remove('flip');
+  lock = false;
+  updateHeader();
+}
+
+function toggleFlip(){
+  if(lock) return;
+  flipped = !flipped;
+  $('#card').classList.toggle('flip', flipped);
+  $('#grade').classList.toggle('on', flipped);
+  if(flipped) speak();
+}
+
+function speak(){
+  if(!('speechSynthesis' in window)) return;
+  const c = queue[qi]; if(!c) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(c.replace(/[^a-zA-Z0-9 ]/g,' '));
+  u.lang = 'en-US'; u.rate = .85;
+  const vs = speechSynthesis.getVoices().filter(v=>v.lang.startsWith('en'));
+  if(vs.length) u.voice = vs.find(v=>/Samantha|Alex|Google US English|Microsoft/.test(v.name)) || vs[0];
+  const btn = $('#sayBtn');
+  if(btn){ btn.classList.add('playing'); u.onend = ()=>btn.classList.remove('playing'); }
+  speechSynthesis.speak(u);
+}
+
+function grade(g){
+  if(lock || !flipped) return;
+  const c = queue[qi]; if(!c) return;
+  lock = true;
+
+  const st = S.w[c] || {b:0,d:0,s:0,ok:0,no:0};
+  const isNew = !S.w[c];
+  st.s++;
+  if(g===1){ st.no++; st.b = 0; st.d = Date.now() + 5*60*1000; }
+  else if(g===2){ st.no += 0; st.b = Math.max(1, st.b); st.d = Date.now() + (st.b<2 ? 30*60*1000 : 1*DAY); }
+  else { st.ok++; st.b = Math.min(5, st.b+1); st.d = Date.now() + BOX_MS[st.b]; }
+  S.w[c] = st;
+
+  const t = today();
+  if(!S.days[t]) S.days[t] = {n:0,r:0};
+  if(isNew) S.days[t].n++; else S.days[t].r++;
+  markStreak();
+  save();
+
+  // 不认识 → 本轮稍后再出现一次
+  if(g===1 && qi + 3 < queue.length){ queue.splice(qi+3, 0, c); total++; }
+
+  $('#card').classList.remove('flip');
+  $('#grade').classList.remove('on');
+  flipped = false;
+  qi++;
+  setTimeout(()=>{ if(qi >= queue.length){ $('#stage').innerHTML = doneHTML(); bindDone(); } else paintCard(); }, 320);
+}
+
+function markStreak(){
+  const t = today();
+  if(S.last === t) return;
+  const y = new Date(Date.now()-DAY);
+  const ys = y.getFullYear()+'-'+String(y.getMonth()+1).padStart(2,'0')+'-'+String(y.getDate()).padStart(2,'0');
+  S.streak = (S.last === ys) ? (S.streak||0)+1 : 1;
+  S.last = t;
+}
+
+function doneHTML(msg){
+  const dc = dayRec();
+  return `<div class="done">
+    <div class="big">✓</div>
+    <h2>${msg || '今天的卡背完了'}</h2>
+    <p>本次 ${total} 张　今日新词 ${dc.n} / ${S.goalNew}　复习 ${dc.r}</p>
+    <div class="acts">
+      <button class="btn primary" data-act="again">再来 10 张</button>
+      <button class="btn" data-act="stats">看统计</button>
+    </div>
+  </div>`;
+}
+function bindDone(){ updateHeader(); }
+
+/* ================= 统计页 ================= */
+function renderStats(){
+  const st = Object.values(S.w);
+  const learned = st.length;
+  const mastered = st.filter(x=>x.b>=4).length;
+  const learning = st.filter(x=>x.b>0 && x.b<4).length;
+  const dueN = WORDS.filter(w=>S.w[w.c] && S.w[w.c].d<=Date.now()).length;
+  const dc = dayRec();
+
+  const cats = CATS.slice(1).map(k=>{
+    const all = WORDS.filter(w=>w.k===k);
+    const got = all.filter(w=>S.w[w.c]).length;
+    return {k, all:all.length, got, pct: Math.round(got/all.length*100)};
+  });
+
+  $('#stage').innerHTML = `
+    <div class="grid">
+      <div class="stat"><b style="color:var(--blu)">${learned}</b><span>已学 / ${WORDS.length}</span></div>
+      <div class="stat"><b style="color:var(--grn)">${mastered}</b><span>已掌握</span></div>
+      <div class="stat"><b style="color:var(--amb)">${dueN}</b><span>待复习</span></div>
+      <div class="stat"><b style="color:var(--vio)">${S.streak||0}</b><span>连续天数</span></div>
+    </div>
+    <div class="sectitle">分类进度（学过的命令 / 该类总数）</div>
+    ${cats.map(c=>`<div class="catrow">
+      <div class="h"><span>${c.k}</span><b>${c.got}/${c.all} · ${c.pct}%</b></div>
+      <div class="b"><i style="width:${c.pct}%"></i></div></div>`).join('')}
+    <div class="sectitle">今日</div>
+    <p style="font-size:13.5px;color:var(--tx2);margin-bottom:20px">
+      新词 ${dc.n} 张（目标 ${S.goalNew}）· 复习 ${dc.r} 张 · 学习中 ${learning} 个
+    </p>
+    <div class="acts" style="justify-content:flex-start">
+      <button class="btn" data-act="back">回到学习</button>
+      <button class="btn" data-act="reset">重置全部进度</button>
+    </div>`;
+
+  updateHeader();
+}
+
+/* ================= 头部 / 模式 ================= */
+function updateHeader(){
+  const dc = dayRec();
+  const n = dc.n + dc.r;
+  $('#pToday').innerHTML = `今日 <b>${n}</b>`;
+  $('#pStreak').textContent = `连续 ${S.streak||0} 天`;
+}
+function setMode(m){
+  mode = m;
+  document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on', b.dataset.mode===m));
+  if(m==='study') renderStudy(); else renderStats();
+}
+
+/* ================= 初始化 ================= */
+(function init(){
+  const sel = $('#catSel');
+  sel.innerHTML = CATS.map(c=>`<option ${c===S.cat?'selected':''}>${c}</option>`).join('');
+  sel.addEventListener('change', ()=>{ S.cat = sel.value; save(); if(mode==='study') renderStudy(); });
+  syncVoices(); updateHeader();
+  setMode('study');
+
+  document.querySelectorAll('#seg button').forEach(b=>{
+    b.addEventListener('click', ()=>setMode(b.dataset.mode));
+  });
+  $('#btnStats').addEventListener('click', ()=>setMode(mode==='stats'?'study':'stats'));
+
+  document.addEventListener('click', e=>{
+    const b = e.target.closest('[data-act]'); if(!b) return;
+    const a = b.dataset.act;
+    if(a==='again'){ S.goalNew += 10; save(); renderStudy(); }
+    if(a==='stats'){ setMode('stats'); }
+    if(a==='back'){ setMode('study'); }
+    if(a==='reset' && confirm('清空所有学习记录？此操作不可撤销。')){
+      S = { w:{}, days:{}, last:'', streak:0, goalNew:15, cat:'全部' };
+      save(); renderStats();
+    }
+  });
+
+  document.addEventListener('keydown', e=>{
+    if(e.target.tagName==='SELECT') return;
+    if(mode!=='study'){ if(e.key==='s'||e.key==='S') setMode('study'); return; }
+    if(e.key===' '){ e.preventDefault(); toggleFlip(); return; }
+    if(e.key==='1'||e.key==='2'||e.key==='3'){ grade(+e.key); return; }
+    if(e.key==='r'||e.key==='R'){ speak(); }
+  });
+  function syncVoices(){ if('speechSynthesis' in window) speechSynthesis.getVoices(); }
+  if('speechSynthesis' in window) speechSynthesis.onvoiceschanged = syncVoices;
+})();
+</script>
+</body>
+</html>
