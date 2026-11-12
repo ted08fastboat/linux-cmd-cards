@@ -161,6 +161,49 @@
   kbd.k{font-family:var(--mono);font-size:10px;border:1px solid #2b3245;border-bottom-width:2px;
     border-radius:4px;padding:0 4px;color:var(--tx3);margin:0 2px}
 
+  /* ---------- quiz ---------- */
+  .qcard{background:linear-gradient(170deg,#151926,#11141d);border:1px solid var(--line);
+    border-radius:20px;padding:26px 28px;box-shadow:0 20px 50px -24px rgba(0,0,0,.8)}
+  .qlabel{font-size:11px;letter-spacing:.12em;color:var(--tx3);margin-bottom:10px}
+  .qprompt{font-family:var(--mono);font-size:clamp(26px,5vw,38px);font-weight:700;letter-spacing:-.6px;
+    line-height:1.25;word-break:break-word;color:#fff}
+  .qprompt.cn{font-family:var(--sans);font-size:clamp(20px,4vw,26px);letter-spacing:-.2px}
+  .opts{margin-top:18px;display:flex;flex-direction:column;gap:8px}
+  .opt{display:flex;gap:11px;align-items:center;padding:12px 15px;border-radius:11px;
+    border:1px solid var(--line);background:var(--s1);cursor:pointer;transition:.14s;
+    font-size:14.2px;color:var(--tx2);text-align:left;width:100%;font-family:var(--sans);line-height:1.6}
+  .opt:hover{background:var(--s2);border-color:var(--line2);color:var(--tx)}
+  .opt .k{font-family:var(--mono);font-size:10.5px;color:var(--tx3);border:1px solid var(--line2);
+    border-radius:5px;padding:0 5px;flex:none;line-height:1.7}
+  .opt.mono{font-family:var(--mono);font-size:14.5px}
+  .opt.right{border-color:rgba(53,196,106,.6);background:rgba(53,196,106,.12);color:#93f0b6}
+  .opt.right .k{border-color:rgba(53,196,106,.5);color:#93f0b6}
+  .opt.wrong{border-color:rgba(240,80,60,.6);background:rgba(240,80,60,.12);color:#ffb3a8}
+  .opt.wrong .k{border-color:rgba(240,80,60,.5);color:#ffb3a8}
+  .opt.dim{opacity:.4}
+  .qfoot{display:flex;align-items:center;justify-content:space-between;margin-top:16px;font-size:12.5px;color:var(--tx3)}
+  .qres{font-size:13px;margin-top:12px;line-height:1.8;display:none}
+  .qres.on{display:block}
+  .qres b{color:var(--grn)} .qres i{color:#ff8a7a;font-style:normal}
+
+  /* ---------- typing ---------- */
+  .tinput{width:100%;font-family:var(--mono);font-size:22px;background:#0a0e15;border:1px solid var(--line2);
+    color:var(--tx);padding:13px 16px;border-radius:12px;outline:none;margin-top:18px;transition:.15s;
+    letter-spacing:.5px}
+  .tinput::placeholder{color:#3d4658;font-size:14px;letter-spacing:0}
+  .tinput:focus{border-color:var(--blu);box-shadow:0 0 0 3px rgba(79,140,255,.13)}
+  .tinput.ok{border-color:var(--grn);background:rgba(53,196,106,.06);box-shadow:0 0 0 3px rgba(53,196,106,.13)}
+  .tinput.bad{border-color:var(--red);background:rgba(240,80,60,.06);box-shadow:0 0 0 3px rgba(240,80,60,.13)}
+  .thint{font-family:var(--mono);font-size:13px;color:var(--tx3);letter-spacing:.3em;margin-top:14px}
+  .tact{display:flex;gap:9px;margin-top:14px}
+
+  /* ---------- wrong book ---------- */
+  .wrow{display:flex;align-items:center;gap:12px;padding:9px 2px;border-bottom:1px solid #1a1f2b;font-size:13.6px}
+  .wrow:last-child{border-bottom:0}
+  .wrow .c{font-family:var(--mono);color:#ffc98b;flex:none;width:110px}
+  .wrow .d{color:var(--tx2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .wrow .n{font-family:var(--mono);font-size:11.5px;color:#ff8a7a;flex:none}
+
   @media(max-width:640px){
     main{padding:14px 13px 24px}
     .bar{padding:10px 13px;gap:8px}
@@ -189,6 +232,8 @@
     <div class="toolbar">
       <div class="seg" id="seg">
         <button data-mode="study" class="on">学习</button>
+        <button data-mode="quiz">测验</button>
+        <button data-mode="type">打字</button>
         <button data-mode="stats">统计</button>
       </div>
       <div class="spacer"></div>
@@ -196,7 +241,7 @@
     </div>
     <div id="stage"></div>
   </main>
-  <footer>
+  <footer id="foot">
     <kbd class="k">空格</kbd> 翻面 / 下一个　<kbd class="k">1</kbd> 不认识　<kbd class="k">2</kbd> 模糊　<kbd class="k">3</kbd> 认识　<kbd class="k">R</kbd> 朗读
   </footer>
 </div>
@@ -360,8 +405,11 @@ let queue = [], qi = 0, total = 0, flipped = false, lock = false, mode = 'study'
 /* ================= 会话 ================= */
 function dayRec(){ return S.days[today()] || {n:0,r:0}; }
 
+let poolOverride = null;
 function buildQueue(){
-  const pool = WORDS.filter(w => S.cat==='全部' || w.k===S.cat);
+  const pool = poolOverride
+    ? WORDS.filter(w => poolOverride.includes(w.c))
+    : WORDS.filter(w => S.cat==='全部' || w.k===S.cat);
   const now = Date.now();
   const due = [], fresh = [];
   pool.forEach(w=>{
@@ -555,6 +603,15 @@ function renderStats(){
     ${cats.map(c=>`<div class="catrow">
       <div class="h"><span>${c.k}</span><b>${c.got}/${c.all} · ${c.pct}%</b></div>
       <div class="b"><i style="width:${c.pct}%"></i></div></div>`).join('')}
+    <div class="sectitle">错题本 · 答错过还没掌握</div>
+    ${(()=>{ const wl = wrongList();
+      if(!wl.length) return `<p style="font-size:13.5px;color:var(--tx3);margin-bottom:6px">还没有错题。测验或打字答错的命令会自动进这里。</p>`;
+      return wl.slice(0,8).map(w=>`<div class="wrow"><span class="c">${esc(w.c)}</span>
+        <span class="d">${esc(w.d)}</span><span class="n">错 ${S.w[w.c].no}</span></div>`).join('')
+        + (wl.length>8 ? `<div style="font-size:12px;color:var(--tx3);padding:8px 2px">…还有 ${wl.length-8} 个</div>` : '')
+        + `<div class="acts" style="justify-content:flex-start;margin-top:14px">
+             <button class="btn primary" data-act="drill">练这 ${wl.length} 个错题</button></div>`;
+    })()}
     <div class="sectitle">今日</div>
     <p style="font-size:13.5px;color:var(--tx2);margin-bottom:20px">
       新词 ${dc.n} 张（目标 ${S.goalNew}）· 复习 ${dc.r} 张 · 学习中 ${learning} 个
@@ -567,6 +624,165 @@ function renderStats(){
   updateHeader();
 }
 
+/* ================= 测验 / 打字 / 错题 ================= */
+const shuffle = a => { a = a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+
+function bump(cmd, correct){
+  const isNew = !S.w[cmd];
+  const st = S.w[cmd] || {b:0,d:0,s:0,ok:0,no:0};
+  st.s++;
+  if(correct){ st.ok++; st.b = Math.min(5, st.b+1); st.d = Date.now() + BOX_MS[st.b]; }
+  else { st.no++; st.b = 0; st.d = Date.now() + 5*60*1000; }
+  S.w[cmd] = st;
+  const t = today(); if(!S.days[t]) S.days[t] = {n:0,r:0};
+  if(isNew) S.days[t].n++; else S.days[t].r++;
+  markStreak(); save(); updateHeader();
+}
+
+function sessionPool(n){
+  const pool = WORDS.filter(w => S.cat==='全部' || w.k===S.cat);
+  const learned = shuffle(pool.filter(w=>S.w[w.c]));
+  const fresh = shuffle(pool.filter(w=>!S.w[w.c]));
+  return shuffle([...learned.slice(0, Math.ceil(n*0.7)), ...fresh.slice(0, n)]).slice(0,n).map(w=>w.c);
+}
+
+/* ---------- 四选一 ---------- */
+let qz = null;
+function makeOptions(w, reverse){
+  const pool = WORDS.filter(x=>x.c!==w.c);
+  const same = shuffle(pool.filter(x=>x.k===w.k));
+  const other = shuffle(pool.filter(x=>x.k!==w.k));
+  const picks = [], used = new Set([reverse ? w.c : w.d]);
+  for(const x of [...same, ...other]){
+    if(picks.length>=3) break;
+    const key = reverse ? x.c : x.d;
+    if(!used.has(key)){ picks.push(x); used.add(key); }
+  }
+  return shuffle([w, ...picks]);
+}
+function startQuiz(){ qz = {list: sessionPool(10), i:0, right:0, opts:null, for:null, answered:false}; renderQuiz(); }
+
+function renderQuiz(){
+  if(!qz) return startQuiz();
+  const stage = $('#stage');
+  if(qz.i >= qz.list.length){
+    stage.innerHTML = `<div class="done"><div class="big">${qz.right>=8?'✓':'◔'}</div>
+      <h2>测验完成</h2><p>${qz.list.length} 题答对 <b style="color:var(--grn)">${qz.right}</b> 题</p>
+      <div class="acts"><button class="btn primary" data-act="quizAgain">再来一轮</button>
+      <button class="btn" data-act="stats">看统计</button></div></div>`;
+    updateHeader(); return;
+  }
+  const c = qz.list[qz.i], w = byCmd[c];
+  const reverse = qz.i % 2 === 1;
+  if(qz.for !== c){ qz.for = c; qz.opts = makeOptions(w, reverse); qz.answered = false; }
+
+  stage.innerHTML = `
+    <div class="sprog"><b>${qz.i+1} / ${qz.list.length}</b><div class="tr"><i style="width:${qz.i/qz.list.length*100}%"></i></div><span>答对 ${qz.right}</span></div>
+    <div class="qcard">
+      <div class="qlabel">${reverse ? '看意思，选命令' : '看命令，选意思'}　·　${w.k}</div>
+      <div class="qprompt ${reverse?'cn':''}">${reverse ? esc(w.d) : esc(w.c)}</div>
+      <div class="opts" id="opts">
+        ${qz.opts.map((o,i)=>`<button class="opt ${reverse?'mono':''}" data-i="${i}">
+          <span class="k">${i+1}</span><span>${esc(reverse ? o.c : o.d)}</span></button>`).join('')}
+      </div>
+      <div class="qres" id="qres"></div>
+    </div>
+    <div class="qfoot"><span>按 1–4 作答</span><span id="qnext"></span></div>`;
+  bindQuiz(w, reverse);
+  updateHeader();
+}
+
+function bindQuiz(w, reverse){
+  const wrap = $('#opts');
+  wrap.addEventListener('click', e=>{
+    const b = e.target.closest('.opt'); if(!b || qz.answered) return;
+    answerQuiz(+b.dataset.i, w, reverse);
+  });
+}
+function answerQuiz(idx, w, reverse){
+  qz.answered = true;
+  const correct = qz.opts[idx].c === w.c;
+  const nodes = [...document.querySelectorAll('#opts .opt')];
+  nodes.forEach((n,i)=>{
+    if(qz.opts[i].c === w.c) n.classList.add('right');
+    else if(i === idx) n.classList.add('wrong');
+    else n.classList.add('dim');
+    n.style.pointerEvents = 'none';
+  });
+  const res = $('#qres');
+  res.classList.add('on');
+  if(correct){ qz.right++; res.innerHTML = `<b>答对了</b>　${esc(w.c)} — ${esc(w.d)}`; }
+  else res.innerHTML = `<i>答错了</i>　正确答案是 <b style="color:var(--tx)">${esc(reverse?w.c:w.d)}</b><br>
+    <span style="color:var(--tx2)">${esc(w.c)} — ${esc(w.d)}</span>
+    <div style="margin-top:8px;font-family:var(--mono);font-size:12.5px;color:#8fd9c0">${esc(w.s)}</div>`;
+  bump(w.c, correct);
+  $('#qnext').innerHTML = `<button class="btn primary" style="padding:7px 16px" data-act="qnext">下一题</button>`;
+  if(correct) setTimeout(()=>{ if(qz.answered) nextQuiz(); }, 850);
+}
+function nextQuiz(){ qz.i++; qz.for = null; qz.answered = false; renderQuiz(); }
+
+/* ---------- 打字 ---------- */
+let tp = null;
+function startType(){ tp = {list: sessionPool(10), i:0, right:0, tries:0, done:false}; renderType(); }
+function renderType(){
+  if(!tp) return startType();
+  const stage = $('#stage');
+  if(tp.i >= tp.list.length){
+    stage.innerHTML = `<div class="done"><div class="big">${tp.right>=8?'✓':'◔'}</div>
+      <h2>打字练习完成</h2><p>${tp.list.length} 题拼对 <b style="color:var(--grn)">${tp.right}</b> 题</p>
+      <div class="acts"><button class="btn primary" data-act="typeAgain">再来一轮</button>
+      <button class="btn" data-act="stats">看统计</button></div></div>`;
+    updateHeader(); return;
+  }
+  const c = tp.list[tp.i], w = byCmd[c];
+  const mask = c[0] + '·'.repeat(Math.max(0, c.length-1));
+  stage.innerHTML = `
+    <div class="sprog"><b>${tp.i+1} / ${tp.list.length}</b><div class="tr"><i style="width:${tp.i/tp.list.length*100}%"></i></div><span>拼对 ${tp.right}</span></div>
+    <div class="qcard">
+      <div class="qlabel">看释义，拼出命令　·　${w.k}</div>
+      <div class="qprompt cn">${esc(w.d)}</div>
+      <div class="thint">${mask}　共 ${c.length} 个字符</div>
+      <input class="tinput" id="tinput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="输入命令后回车">
+      <div class="qres" id="tres"></div>
+      <div class="tact" id="tact"></div>
+    </div>
+    <div class="qfoot"><span>Enter 提交 · 答错会显示答案</span><span>共 ${tp.list.length} 题</span></div>`;
+  const inp = $('#tinput');
+  inp.focus();
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter') submitType(); });
+  updateHeader();
+}
+function submitType(){
+  const inp = $('#tinput'); if(!inp || tp.done) return;
+  const c = tp.list[tp.i], w = byCmd[c];
+  const val = inp.value.trim().toLowerCase();
+  if(!val) return;
+  const ok = val === c.toLowerCase();
+  tp.done = true;
+  inp.classList.add(ok?'ok':'bad');
+  inp.setAttribute('readonly','');
+  const res = $('#tres'); res.classList.add('on');
+  if(ok){
+    tp.right++;
+    res.innerHTML = `<b>正确</b>　${esc(w.c)} — ${esc(w.d)}`;
+    bump(c, true);
+  } else {
+    res.innerHTML = `<i>没拼对</i>　正确答案：<b style="color:var(--tx)">${esc(w.c)}</b><br>
+      <span style="color:var(--tx2)">${esc(w.d)}</span>
+      <div style="margin-top:8px;font-family:var(--mono);font-size:12.5px;color:#8fd9c0">${esc(w.s)}</div>`;
+    bump(c, false);
+  }
+  $('#tact').innerHTML = `<button class="btn primary" style="padding:8px 18px" data-act="tnext">下一题</button>`;
+  if(ok) setTimeout(()=>{ if(tp.done) nextType(); }, 900);
+}
+function nextType(){ tp.i++; tp.done = false; renderType(); }
+
+/* ---------- 错题本 ---------- */
+function wrongList(){
+  return WORDS.filter(w=>{ const s=S.w[w.c]; return s && s.no>0 && s.b<3; })
+    .sort((a,b)=> (S.w[b.c].no||0)-(S.w[a.c].no||0));
+}
+
 /* ================= 头部 / 模式 ================= */
 function updateHeader(){
   const dc = dayRec();
@@ -576,8 +792,14 @@ function updateHeader(){
 }
 function setMode(m){
   mode = m;
+  if(m !== 'study') poolOverride = null;
   document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on', b.dataset.mode===m));
-  if(m==='study') renderStudy(); else renderStats();
+  const FT={study:'<kbd class="k">空格</kbd> 翻面　<kbd class="k">1</kbd> 不认识　<kbd class="k">2</kbd> 模糊　<kbd class="k">3</kbd> 认识　<kbd class="k">R</kbd> 朗读',quiz:'<kbd class="k">1</kbd>–<kbd class="k">4</kbd> 选择答案　<kbd class="k">Enter</kbd> 下一题',type:'直接输入命令，<kbd class="k">Enter</kbd> 提交',stats:'<kbd class="k">S</kbd> 回到学习'};
+  const f=document.getElementById('foot'); if(f) f.innerHTML=FT[m]||'';
+  if(m==='study') renderStudy();
+  else if(m==='quiz') (qz && qz.i < qz.list.length) ? renderQuiz() : startQuiz();
+  else if(m==='type') (tp && tp.i < tp.list.length) ? renderType() : startType();
+  else renderStats();
 }
 
 /* ================= 初始化 ================= */
@@ -589,7 +811,7 @@ function setMode(m){
   setMode('study');
 
   document.querySelectorAll('#seg button').forEach(b=>{
-    b.addEventListener('click', ()=>setMode(b.dataset.mode));
+    b.addEventListener('click', ()=>{ poolOverride = null; setMode(b.dataset.mode); });
   });
   $('#btnStats').addEventListener('click', ()=>setMode(mode==='stats'?'study':'stats'));
 
@@ -599,6 +821,15 @@ function setMode(m){
     if(a==='again'){ S.goalNew += 10; save(); renderStudy(); }
     if(a==='stats'){ setMode('stats'); }
     if(a==='back'){ setMode('study'); }
+    if(a==='qnext'){ nextQuiz(); }
+    if(a==='tnext'){ nextType(); }
+    if(a==='quizAgain'){ startQuiz(); }
+    if(a==='typeAgain'){ startType(); }
+    if(a==='drill'){
+      const list = wrongList().map(w=>w.c);
+      if(!list.length) return;
+      poolOverride = list; setMode('study');
+    }
     if(a==='reset' && confirm('清空所有学习记录？此操作不可撤销。')){
       S = { w:{}, days:{}, last:'', streak:0, goalNew:15, cat:'全部' };
       save(); renderStats();
@@ -607,6 +838,16 @@ function setMode(m){
 
   document.addEventListener('keydown', e=>{
     if(e.target.tagName==='SELECT') return;
+    if(mode==='quiz'){
+      if(/^[1-4]$/.test(e.key)){
+        const b = document.querySelector(`#opts .opt[data-i="${+e.key-1}"]`);
+        if(b && qz && !qz.answered) b.click();
+        return;
+      }
+      if(e.key==='Enter' || e.key===' '){ e.preventDefault(); if(qz && qz.answered) nextQuiz(); }
+      return;
+    }
+    if(mode==='type') return;                    // 输入框自己处理 Enter
     if(mode!=='study'){ if(e.key==='s'||e.key==='S') setMode('study'); return; }
     if(e.key===' '){ e.preventDefault(); toggleFlip(); return; }
     if(e.key==='1'||e.key==='2'||e.key==='3'){ grade(+e.key); return; }
